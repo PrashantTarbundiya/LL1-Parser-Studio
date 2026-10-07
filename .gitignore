@@ -1,0 +1,6 @@
+# Temporary and test artifacts
+scratch/
+*.log
+.tempmediaStorage/
+.DS_Store
+Thumbs.db

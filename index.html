@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LL(1) Parser Studio — Compiler Design Workbench</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📐</text></svg>">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- ============================================================
+       TOP COMMAND HEADER
+       ============================================================ -->
+  <header class="header">
+    <div class="header-inner">
+      <div class="logo">
+        <div class="logo-icon">LL1</div>
+        <div class="logo-text">
+          <h1>LL(1) Parser Studio</h1>
+          <p>Compiler Design Workbench</p>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <button class="btn btn-primary btn-sm" onclick="analyzeGrammar()" title="Analyze Grammar and Build Parser">&#9654; Run Analysis</button>
+        <button class="btn btn-secondary btn-sm" onclick="exportReport()" title="Export Formal HTML Report">&#128196; Export Report</button>
+        <button class="btn btn-secondary btn-sm" onclick="clearAll()" title="Reset Workspace">&#128465; Clear</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ============================================================
+       STUDIO WORKBENCH (SPLIT VIEW IDE)
+       ============================================================ -->
+  <main class="workbench">
+
+    <!-- LEFT PANEL: GRAMMAR EDITOR & DIAGNOSTICS -->
+    <aside class="workbench-sidebar">
+      
+
+      <!-- CFG Code Editor Card -->
+      <div class="studio-card editor-card">
+        <div class="studio-card-header">
+          <div class="editor-file-tab">
+            <span class="file-icon">&#128221;</span>
+            <span class="file-name">grammar.cfg</span>
+          </div>
+          <div class="editor-tools">
+            <button type="button" class="btn-tool btn-tool-action" onclick="formatGrammar()" title="Auto-format and beautify grammar rules">&#9889; Format</button>
+            <span class="tool-sep">|</span>
+            <span class="tool-label">Quick:</span>
+            <button type="button" class="btn-tool" onclick="insertEps('\u03b5')" title="Insert epsilon (&epsilon;)">&#949;</button>
+            <button type="button" class="btn-tool" onclick="insertEps('#')" title="Insert # (epsilon)">#</button>
+            <button type="button" class="btn-tool" onclick="insertEps(' | ')" title="Insert alternative">|</button>
+            <button type="button" class="btn-tool" onclick="insertEps(' -> ')" title="Insert arrow">&rarr;</button>
+          </div>
+        </div>
+
+        <div class="editor-body">
+          <textarea id="txtGrammar" spellcheck="false" placeholder="E -> T E'&#10;E' -> + T E' | #&#10;T -> F T'&#10;T' -> * F T' | #&#10;F -> ( E ) | id&#10;&#10;Use &epsilon;, eps, #, or @ for epsilon.&#10;Symbols on LHS define non-terminals.&#10;Terminals: id, num, +, *, etc.&#10;First rule LHS is the start symbol."></textarea>
+        </div>
+
+        <div id="grammarErrors"></div>
+
+        <div class="editor-footer">
+          <button class="btn btn-primary btn-block" onclick="analyzeGrammar()">
+            &#128640; Run Analysis &amp; Build Parser
+          </button>
+          <div class="editor-shortcut-hint">
+            <span><kbd>Ctrl</kbd> + <kbd>Enter</kbd> to Run</span>
+            <span id="editorStats">0 rules</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Grammar Structural Properties Card -->
+      <div class="studio-card info-card">
+        <div class="studio-card-header">
+          <div class="card-headline">
+            <span class="headline-icon">&#128269;</span>
+            <span>Grammar Properties</span>
+          </div>
+        </div>
+        <div class="card-body">
+          <div id="grammarInfo">
+            <p class="text-muted">Enter or select a grammar and click <strong>Run Analysis</strong> to begin.</p>
+          </div>
+        </div>
+      </div>
+
+    </aside>
+
+    <!-- RIGHT PANEL: WORKSPACE VISUALIZATION & OUTPUT TABS -->
+    <section class="workbench-main">
+
+      <!-- Workspace Tab Bar (Segmented Control) -->
+      <nav class="workbench-nav">
+        <div class="tab-pill-bar">
+          <button class="tab-btn active" data-tab="summary" onclick="switchTab('summary')">&#128202; Summary Table</button>
+          <button class="tab-btn" data-tab="first" onclick="switchTab('first')">&#9312; FIRST Engine</button>
+          <button class="tab-btn" data-tab="follow" onclick="switchTab('follow')">&#9313; FOLLOW Engine</button>
+          <button class="tab-btn" data-tab="graph" onclick="switchTab('graph')">&#128392; Dependency Graph</button>
+          <button class="tab-btn" data-tab="table" onclick="switchTab('table')">&#128196; Parse Table</button>
+          <button class="tab-btn" data-tab="conflicts" onclick="switchTab('conflicts')">&#9888; Conflicts</button>
+          <button class="tab-btn" data-tab="tree" onclick="switchTab('tree')">&#127795; Parse Tree</button>
+          <button class="tab-btn" data-tab="simulate" onclick="switchTab('simulate')">&#9654; PDA Simulator</button>
+          <button class="tab-btn" data-tab="preprocess" onclick="switchTab('preprocess')">&#128295; Preprocessing</button>
+        </div>
+      </nav>
+
+      <!-- Workspace Content Panes -->
+      <div class="workbench-content">
+
+        <!-- TAB: SUMMARY TABLE -->
+        <div id="sec-summary" class="section active">
+          <div class="studio-card">
+            <div class="studio-card-header" style="justify-content:space-between;flex-wrap:wrap;gap:8px;">
+              <div class="card-headline">
+                <span class="headline-icon">&#128202;</span>
+                <span>CFG Result Summary &amp; Non-Terminal Set Overview</span>
+              </div>
+              <div>
+                <button class="btn btn-secondary btn-sm" onclick="switchTab('first')">&#9312; Open FIRST Simulator</button>
+                <button class="btn btn-secondary btn-sm" onclick="switchTab('follow')">&#9313; Open FOLLOW Simulator</button>
+                <button class="btn btn-secondary btn-sm" onclick="switchTab('graph')">&#128392; View Dependency Graph</button>
+              </div>
+            </div>
+            <div class="card-body">
+              <div id="summaryContent"><p class="text-muted">Enter or select a grammar and click <strong>Run Analysis</strong> to begin.</p></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB: FIRST SETS & SIMULATOR -->
+        <div id="sec-first" class="section">
+          <div class="studio-card">
+            <div class="studio-card-header" style="justify-content:space-between;flex-wrap:wrap;gap:8px;">
+              <div class="card-headline">
+                <span class="headline-icon">&#9312;</span>
+                <span>FIRST Set Fixed-Point Rule Engine &amp; Step-by-Step Simulator</span>
+              </div>
+              <div class="sim-speed-wrap">
+                <span style="font-size:12px;color:var(--text-muted);margin-right:4px;">Speed:</span>
+                <select id="firstSimSpeed" class="sim-speed-select" onchange="simFirstSetSpeed(this.value)">
+                  <option value="1800">0.5x (Slow)</option>
+                  <option value="1000" selected>1.0x (Normal)</option>
+                  <option value="500">2.0x (Fast)</option>
+                </select>
+              </div>
+            </div>
+            <div class="card-body">
+              <div id="firstContent"><p class="text-muted">Analyze a grammar first.</p></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB: FOLLOW SETS & SIMULATOR -->
+        <div id="sec-follow" class="section">
+          <div class="studio-card">
+            <div class="studio-card-header" style="justify-content:space-between;flex-wrap:wrap;gap:8px;">
+              <div class="card-headline">
+                <span class="headline-icon">&#9313;</span>
+                <span>FOLLOW Set Fixed-Point Rule Engine &amp; Step-by-Step Simulator</span>
+              </div>
+              <div class="sim-speed-wrap">
+                <span style="font-size:12px;color:var(--text-muted);margin-right:4px;">Speed:</span>
+                <select id="followSimSpeed" class="sim-speed-select" onchange="simFollowSetSpeed(this.value)">
+                  <option value="1800">0.5x (Slow)</option>
+                  <option value="1000" selected>1.0x (Normal)</option>
+                  <option value="500">2.0x (Fast)</option>
+                </select>
+              </div>
+            </div>
+            <div class="card-body">
+              <div id="followContent"><p class="text-muted">Analyze a grammar first.</p></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB: DEPENDENCY GRAPH & INSPECTOR -->
+        <div id="sec-graph" class="section">
+          <div class="studio-card">
+            <div class="studio-card-header">
+              <div class="card-headline">
+                <span class="headline-icon">&#128392;</span>
+                <span>FIRST &amp; FOLLOW Dependency Graph &amp; Interactive Symbol Inspector</span>
+              </div>
+            </div>
+            <div class="card-body">
+              <div id="graphContent"><p class="text-muted">Analyze a grammar first.</p></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB: PARSE TABLE -->
+        <div id="sec-table" class="section">
+          <div class="studio-card">
+            <div class="studio-card-header">
+              <div class="card-headline">
+                <span class="headline-icon">&#128196;</span>
+                <span>LL(1) Predictive Parsing Table M[A, a]</span>
+              </div>
+            </div>
+            <div class="card-body">
+              <div id="tableContent"><p class="text-muted">Analyze a grammar first.</p></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB: CONFLICTS -->
+        <div id="sec-conflicts" class="section">
+          <div class="studio-card">
+            <div class="studio-card-header">
+              <div class="card-headline">
+                <span class="headline-icon">&#9888;</span>
+                <span>LL(1) Grammar Conflict Diagnostics</span>
+              </div>
+            </div>
+            <div class="card-body">
+              <div id="conflictsContent"><p class="text-muted">Analyze a grammar first.</p></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB: PARSE TREE -->
+        <div id="sec-tree" class="section">
+          <div class="studio-card">
+            <div class="studio-card-header" style="justify-content:space-between;flex-wrap:wrap;gap:8px;">
+              <div class="card-headline">
+                <span class="headline-icon">&#127795;</span>
+                <span>Interactive Parse Tree (Vector SVG)</span>
+              </div>
+              <div class="tree-toolbar-actions">
+                <button class="btn btn-secondary btn-sm" onclick="zoomTree(1.15)" title="Zoom In">&#10133; Zoom In</button>
+                <button class="btn btn-secondary btn-sm" onclick="zoomTree(0.85)" title="Zoom Out">&#10134; Zoom Out</button>
+                <button class="btn btn-secondary btn-sm" onclick="fitTreeToView()" title="Fit Tree to Viewport">&#128208; Fit</button>
+                <button class="btn btn-secondary btn-sm" onclick="resetTreeZoom()" title="Reset Zoom (100%)">&#128260; Reset</button>
+                <button class="btn btn-secondary btn-sm" onclick="downloadTreeSVG()" title="Save as SVG">&#128190; Save SVG</button>
+              </div>
+            </div>
+
+            <div class="card-body">
+              <div class="tree-input-bar mb-8" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                <input type="text" id="treeInput" placeholder="Input tokens e.g.: id + id * id" value="" style="flex:1;min-width:220px;" />
+                <button class="btn btn-primary btn-sm" onclick="generateTreeFromInput()">&#128640; Generate Tree</button>
+              </div>
+
+              <div id="treeQuickInputs" class="mb-12"></div>
+
+              <div class="tree-legend mb-12">
+                <span class="legend-chip"><span class="swatch swatch-nt"></span> Non-Terminal</span>
+                <span class="legend-chip"><span class="swatch swatch-t"></span> Terminal</span>
+                <span class="legend-chip"><span class="swatch swatch-eps"></span> Epsilon (&epsilon;)</span>
+              </div>
+
+              <div id="treeStatus" class="mb-8"></div>
+              <div id="treeContent">
+                <p class="text-muted">Enter or select a grammar and click <strong>Run Analysis</strong> to view its parse tree.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB: SIMULATION (PDA) -->
+        <div id="sec-simulate" class="section">
+          <div class="studio-card">
+            <div class="studio-card-header">
+              <div class="card-headline">
+                <span class="headline-icon">&#9654;</span>
+                <span>Pushdown Automaton Step-by-Step Simulator</span>
+              </div>
+            </div>
+            <div class="card-body">
+              <div id="simulateContent"><p class="text-muted">Analyze a grammar first.</p></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB: PREPROCESSING -->
+        <div id="sec-preprocess" class="section">
+          <div class="studio-card">
+            <div class="studio-card-header">
+              <div class="card-headline">
+                <span class="headline-icon">&#128295;</span>
+                <span>Grammar Normalization (Left Recursion &amp; Factoring)</span>
+              </div>
+            </div>
+            <div class="card-body">
+              <div id="preprocessContent"><p class="text-muted">Analyze a grammar first.</p></div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ============================================================
+       IDE BOTTOM STATUS BAR
+       ============================================================ -->
+  <footer class="ide-status-bar">
+    <div class="status-bar-left">
+      <span class="status-item"><span class="status-indicator"></span><span id="statusGrammarSummary">Grammar: Ready</span></span>
+      <span class="status-sep">|</span>
+      <span class="status-item" id="statusRuleCount">0 Rules</span>
+      <span class="status-sep">|</span>
+      <span class="status-item" id="statusDeterminism">LL(1) Ready</span>
+    </div>
+    <div class="status-bar-right">
+      <span class="status-item"><kbd>Ctrl</kbd> + <kbd>Enter</kbd> Run</span>
+      <span class="status-sep">|</span>
+      <span class="status-item"><kbd>Ctrl</kbd> + Scroll Zoom</span>
+      <span class="status-sep">|</span>
+      <span class="status-item text-accent">Zinc Dark</span>
+    </div>
+  </footer>
+
+  <!-- External modular application script -->
+  <script src="app.js"></script>
+</body>
+</html>
